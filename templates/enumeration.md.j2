@@ -1,0 +1,26 @@
+---
+title: {{ details.name }}
+tags: ["transport_safety_model"]
+---
+
+# Description
+
+{{ details.description }}
+
+# Literals
+
+Visibility | Name | Description
+-----------|------|------------
+{% for item in literals -%}
+{{ item.visibility }} | {{ item.name }} | {{ item.description }}
+{% endfor %}
+
+# Properties
+
+Name | Value
+-----|------
+{% for item in properties -%}
+{{ item.name }} | {{ item.value }}
+{% endfor %}
+
+<!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->

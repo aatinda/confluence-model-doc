@@ -1,0 +1,36 @@
+---
+title: {{ details.name }}
+tags: ["transport_safety_model"]
+---
+
+# Description
+
+{{ details.description }}
+
+# Generalized Elements
+
+{% for item in generalized_elements -%}
+[{{ item }}]({{ item }}.md)
+{% endfor %}
+
+# Specialized Elements
+
+_Coming soon_
+
+# Properties
+
+Name | Value
+-----|------
+{% for item in properties -%}
+{{ item.name }} | {{ item.value }}
+{% endfor %}
+
+# Relationships
+
+_Coming soon_
+
+# Diagrams
+
+_Coming soon_
+
+<!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->

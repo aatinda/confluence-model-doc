@@ -1,0 +1,28 @@
+---
+title: {{ details.name }}
+tags: ["transport_safety_model"]
+---
+
+# Description
+
+{{ details.description }}
+
+# Properties
+
+Name | Value
+-----|------
+{% for item in properties %}
+{% if item.name == 'type' and "Enum" in item.value %}
+{{ item.name }} | [{{ item.value }}](../../enumerations/{{ item.value }}.md)
+{% elif item.name == 'type' and "Enum" not in item.value %}
+{{ item.name }} | [{{ item.value }}](../../datatypes/{{ item.value }}.md)
+{% else %}
+{{ item.name }} | {{ item.value }}
+{% endif %}
+{% endfor %}
+
+# Diagrams
+
+_Coming soon_
+
+<!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->
