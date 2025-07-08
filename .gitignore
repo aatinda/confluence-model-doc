@@ -1,2 +1,11 @@
 # Ignore the model itself
 *.xmi
+
+# Ignore output
+
+output/classes/**/*.md
+output/datatypes/*.md
+output/enumerations/*.md
+
+!output/datatypes/index.md
+!output/enumerations/index.md

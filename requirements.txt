@@ -1,2 +1,4 @@
 jinja2==3.1.6
 markdown-to-confluence==0.4.1
+# If Confluence Data Centre then use this old verion 
+# markdown-to-confluence==0.2.7
