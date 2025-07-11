@@ -3,9 +3,13 @@
 
 # Ignore output
 
+outputcopy/
+
 output/classes/**/*.md
 output/datatypes/*.md
 output/enumerations/*.md
 
+!output/index.md
+!output/classes/index.md
 !output/datatypes/index.md
 !output/enumerations/index.md

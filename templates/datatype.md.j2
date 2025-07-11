@@ -1,5 +1,5 @@
 ---
-title: {{ details.name }}
+title: {{ details.model_prefix }} {{ details.name }} {{ details.type | replace("uml:", "") }}
 tags: ["transport_safety_model"]
 ---
 
@@ -7,16 +7,24 @@ tags: ["transport_safety_model"]
 
 {{ details.description }}
 
+{% if generalized_elements %}
 # Generalized Elements
 
 {% for item in generalized_elements -%}
+{% if item.startswith('EAJava') %}
+{{ item }}
+{% else %}
 [{{ item }}]({{ item }}.md)
+{% endif %}
 {% endfor %}
 
+{% endif %}
+{% if specialized_elements %}
 # Specialized Elements
 
-_Coming soon_
+To be added
 
+{% endif %}
 # Properties
 
 Name | Value
@@ -25,12 +33,16 @@ Name | Value
 {{ item.name }} | {{ item.value }}
 {% endfor %}
 
+{% if relationships %}
 # Relationships
 
-_Coming soon_
+{% for item in relationships -%}
+[{{ item.start }}]({{ item.start }}.md) → [{{ item.end }}]({{ item.end }}.md)
 
+{% endfor %}
+{% endif %}
 # Diagrams
 
-_Coming soon_
+To be added
 
 <!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->
