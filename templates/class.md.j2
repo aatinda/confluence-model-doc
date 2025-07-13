@@ -24,10 +24,14 @@ Name | Value
 {{ item.name }} | {{ item.value }}
 {% endfor %}
 
+{% if relationships %}
 # Relationships
 
-To be added
+{% for item in relationships -%}
+[{{ item.start }}](../{{ item.start }}/index.md) ─ [{{ item.end }}](../{{ item.end }}/index.md)
 
+{% endfor %}
+{% endif %}
 # Owned Elements
 
 To be added
