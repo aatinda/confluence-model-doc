@@ -9,6 +9,8 @@ output/classes/**/*.md
 output/datatypes/*.md
 output/enumerations/*.md
 
+root/
+
 !output/index.md
 !output/classes/index.md
 !output/datatypes/index.md
