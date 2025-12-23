@@ -15,3 +15,5 @@ root/
 !output/classes/index.md
 !output/datatypes/index.md
 !output/enumerations/index.md
+
+output.log
