@@ -84,7 +84,7 @@ def generate_id_to_name_map(root, ns):
     return name_map
 
 
-def generate_enumeration_docs_new(model_file, prefix, output_path):
+def generate_enumeration_pages(model_file, prefix, output_path):
     """
     Generate enumeration documentation. One page per enumeration.
     """
@@ -284,7 +284,7 @@ def return_property(properties, property_name):
 
     return value
 
-def generate_class_docs(model_file, prefix, output_path):
+def generate_class_pages(model_file, prefix, output_path):
     """
     Generate class documentation. One page per class.
     """
@@ -416,7 +416,7 @@ def generate_class_docs(model_file, prefix, output_path):
         render_template("class.md.j2", data, output_file)
 
 
-def generate_datatype_docs(model_file, prefix, output_path):
+def generate_datatype_pages(model_file, prefix, output_path):
     """
     Generate data type documentation. One page per data type.
     """
@@ -677,10 +677,10 @@ def main():
     output_dir = "output"
     prefix = "TSM"
 
-    #generate_enumeration_docs_new(model_file, prefix, os.path.join(output_dir, "enumerations"))
-    #generate_class_docs(model_file, prefix, os.path.join(output_dir, "classes"))
-    #generate_datatype_docs(model_file, prefix, os.path.join(output_dir, "datatypes"))
-    #generate_diagram_pages(model_file, prefix, output_dir)
+    generate_enumeration_pages(model_file, prefix, os.path.join(output_dir, "enumerations"))
+    generate_class_pages(model_file, prefix, os.path.join(output_dir, "classes"))
+    generate_datatype_pages(model_file, prefix, os.path.join(output_dir, "datatypes"))
+    generate_diagram_pages(model_file, prefix, output_dir)
     generate_package_page("Enumerations", model_file, prefix, output_dir)
     generate_package_page("DataTypes", model_file, prefix, output_dir)
     generate_package_page("Classes", model_file, prefix, output_dir)
