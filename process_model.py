@@ -1,40 +1,15 @@
 import os
 import shutil
-import xml.etree.ElementTree as ET
+#import xml.etree.ElementTree as ET
+from lxml import etree as ET
 
-from jinja2 import Template, FileSystemLoader, Environment
+
+from common import check_for_skip, get_package_hierachy, get_namespaced_attribute, render_template, generate_id_to_name_map
+
 from pprint import pprint
 
 
-def get_namespaced_attribute(element, prefix_attr_name, ns_map):
-    """
-    Gets a namespaced attribute from an Element, expanding the namespace automatically.
-    """
-    parts = prefix_attr_name.split(':', 1)
-    if len(parts) == 2:
-        prefix, attr_name = parts
-        if prefix in ns_map:
-            expanded_attr_name = f"{{{ns_map[prefix]}}}{attr_name}"
-            return element.attrib.get(expanded_attr_name)
-    # If no prefix, or prefix not in map, try to get as a regular attribute
-    return element.attrib.get(prefix_attr_name)
-
-
-def render_template(template, data, output_file):
-    """
-    Render the Jinja2 template and generate and output file.
-    """
-    env = Environment(loader=FileSystemLoader("templates"), trim_blocks=True, lstrip_blocks=True)
-    template = env.get_template(template)
-
-    # Render the template with the data
-    rendered_content = template.render(data)
-
-    # Write the rendered content to a file
-    with open(output_file, "wb") as file:
-        file.write(rendered_content.encode('utf-8'))
-
-    print(f"File '{output_file}' has been created with the rendered content.")
+ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.1' }
 
 
 def process_properties(uml_element, id_to_name_map=None):
@@ -65,25 +40,6 @@ def process_properties(uml_element, id_to_name_map=None):
     return properties
 
 
-def generate_id_to_name_map(root, ns):
-    """
-    Return a dictionary mapping data type ID to name.
-    """
-    name_map = {}
-
-    for packaged_element in root.findall('.//packagedElement', ns):
-        id = get_namespaced_attribute(packaged_element, "xmi:id", ns)
-        type = get_namespaced_attribute(packaged_element, "xmi:type", ns)
-        name = packaged_element.get('name')
-        if type in ['uml:Enumeration', 'uml:Package', 'uml:DataType', 'uml:Class']:
-            print ("{:44} {:20} {}".format(id, type, name))
-            name_map[id] = name
-
-    pprint(name_map)
-
-    return name_map
-
-
 def generate_enumeration_pages(model_file, prefix, output_path):
     """
     Generate enumeration documentation. One page per enumeration.
@@ -91,7 +47,15 @@ def generate_enumeration_pages(model_file, prefix, output_path):
     tree = ET.parse(model_file)
     root = tree.getroot()
 
-    ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.0' }
+    print("\nProcessing Enumerations\n")
+
+    index_data = {
+        'details': {
+            'model_prefix': prefix,
+            'type': 'Enumerations',
+        },
+        'owned_elements': []
+    }
 
     # Find all Enumerations
     for packaged_element in root.findall('.//packagedElement[@xmi:type="uml:Enumeration"]', ns):
@@ -103,13 +67,30 @@ def generate_enumeration_pages(model_file, prefix, output_path):
         enum_name = packaged_element.get('name')
 
         ###############################################################################
+        ##  Check the package hierarchy and skip if DATEX II related.                ##
+        ###############################################################################
+
+        package_hierarchy = get_package_hierachy(packaged_element)
+        if check_for_skip(package_hierarchy): continue
+
+        ###############################################################################
+        ##  Save the enumeration name to the index page list.                        ##
+        ###############################################################################
+
+        index_data['owned_elements'].append({
+            'name': enum_name,
+            'type': xmi_type
+        })
+
+        ###############################################################################
         ##  Find the element.                                                        ##
         ###############################################################################
 
         element = root.find(f'.//element[@xmi:idref="{enum_id}"]', ns)
         properties = element.find('properties')
 
-        enum_desc = properties.get('documentation')
+        # enum_desc = properties.get('documentation')
+        enum_desc = element.find('./tags/tag[@name="definition"]').get('value')
 
         ###############################################################################
         ##  Add the main details of the enumeration.                                 ##
@@ -173,11 +154,16 @@ def generate_enumeration_pages(model_file, prefix, output_path):
 
             data['literals'].append(literal)
 
-
         # pprint(data)
-
+        os.makedirs(output_path, exist_ok=True)
         output_file = os.path.join(output_path, enum_name + ".md")
         render_template("enumeration.md.j2", data, output_file)
+
+    ###################################################################################
+    ##  Generate a generic index page.                                               ##
+    ###################################################################################
+
+    generate_index_page(output_path, index_data)
 
 
 def generate_literal_page(lit_id, root, ns, prefix, output_path):
@@ -197,7 +183,8 @@ def generate_literal_page(lit_id, root, ns, prefix, output_path):
 
     lit_name = literal.get('name')
     xmi_type = get_namespaced_attribute(owned_literal, "xmi:type", ns)
-    lit_desc = documentation.get('value')
+    # lit_desc = documentation.get('value')
+    lit_desc = literal.find('./tags/tag[@name="definition"]').get('value')
 
     lit_data['details'] = {
         'id': lit_id,
@@ -221,8 +208,6 @@ def generate_attribute_page(attr_id, root, ns, prefix, output_path):
     Generate attribute documentation. One page per attribute.
     """
 
-    print(">>>>>", attr_id)
-
     owned_attribute = root.find(f'.//ownedAttribute[@xmi:id="{attr_id}"]', ns)
     attribute = root.find(f'.//attribute[@xmi:idref="{attr_id}"]', ns)
     documentation = attribute.find('documentation')
@@ -233,7 +218,11 @@ def generate_attribute_page(attr_id, root, ns, prefix, output_path):
 
     attr_name = attribute.get('name')
     xmi_type = get_namespaced_attribute(owned_attribute, "xmi:type", ns)
-    attr_desc = documentation.get('value')
+    #attr_desc = documentation.get('value')
+    attr_desc = attribute.find('./tags/tag[@name="definition"]').get('value')
+
+
+    # print(">>>> Processing attribute ID {} {}".format(attr_id, attr_name))
 
     # attr_desc = root.find(f'.//attribute[@xmi:idref="{attr_id}"]/documentation', ns).attrib.get('value')
 
@@ -251,12 +240,12 @@ def generate_attribute_page(attr_id, root, ns, prefix, output_path):
     attr_data['properties'].append({ 'name': 'idref', 'value': attr_id })
     attr_data['properties'].append({ 'name': 'scope', 'value': attribute.get('scope') })
 
-    pprint(attr_data)
+    # pprint(attr_data)
     os.makedirs(output_path, exist_ok=True)
     output_file = os.path.join(output_path, attr_name + ".md")
     render_template("attribute.md.j2", attr_data, output_file)
 
-    print("*****")
+    # print("*****")
 
     attr = root.find(f'.//attribute[@xmi:idref="{attr_id}"]', ns)
 
@@ -265,7 +254,7 @@ def generate_attribute_page(attr_id, root, ns, prefix, output_path):
     #     for at in element.attrib.items():
     #         print(at)
 
-    print("*****")
+    # print("*****")
 
     return attr_data
 
@@ -291,9 +280,17 @@ def generate_class_pages(model_file, prefix, output_path):
     tree = ET.parse(model_file)
     root = tree.getroot()
 
-    ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.0' }
-
     id_to_name_map = generate_id_to_name_map(root, ns)
+
+    print("\nProcessing Classes\n")
+
+    index_data = {
+        'details': {
+            'model_prefix': prefix,
+            'type': 'Classes',
+        },
+        'owned_elements': []
+    }
 
     # Find all Classes
     for packaged_element in root.findall('.//packagedElement[@xmi:type="uml:Class"]', ns):
@@ -305,6 +302,26 @@ def generate_class_pages(model_file, prefix, output_path):
         class_name = packaged_element.get('name')
 
         ###############################################################################
+        ##  Check the package hierarchy and skip if DATEX II related.                ##
+        ###############################################################################
+
+        package_hierarchy = get_package_hierachy(packaged_element)
+        if check_for_skip(package_hierarchy): continue
+
+        # if class_name.startswith('WeatherRelated : '):
+        #     print("WeatherRelated...skipping ")
+        #     continue
+
+        ###############################################################################
+        ##  Save the enumeration name to the index page list.                        ##
+        ###############################################################################
+
+        index_data['owned_elements'].append({
+            'name': class_name,
+            'type': xmi_type
+        })
+
+        ###############################################################################
         ##  Find the element and extract properties.                                 ##
         ###############################################################################
 
@@ -312,7 +329,8 @@ def generate_class_pages(model_file, prefix, output_path):
         properties = element.find('properties')
         links = element.find('links')
 
-        class_desc = properties.get('documentation')
+        # class_desc = properties.get('documentation')
+        class_desc = element.find('./tags/tag[@name="definition"]').get('value')
 
         print(">> Processing class: ", class_name)
 
@@ -349,7 +367,7 @@ def generate_class_pages(model_file, prefix, output_path):
         ##  Add the class relationships.                                             ##
         ###############################################################################
 
-        print(links)
+        # print(links)
 
         if links is not None:
             data['relationships'] = []
@@ -361,7 +379,7 @@ def generate_class_pages(model_file, prefix, output_path):
                 }
                 data['relationships'].append(relationship)
 
-        pprint(data)
+        # pprint(data)
 
         ###############################################################################
         ##  Loop through the ownedAttributes.                                        ##
@@ -415,21 +433,32 @@ def generate_class_pages(model_file, prefix, output_path):
         output_file = os.path.join(output_path, class_name, "index.md")
         render_template("class.md.j2", data, output_file)
 
+    ###################################################################################
+    ##  Generate a generic index page.                                               ##
+    ###################################################################################
+
+    generate_index_page(output_path, index_data)
+
 
 def generate_datatype_pages(model_file, prefix, output_path):
     """
     Generate data type documentation. One page per data type.
     """
-    print("Processing DataTypes")
 
     tree = ET.parse(model_file)
     root = tree.getroot()
 
-    ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.0' }
-
     id_to_name_map = generate_id_to_name_map(root, ns)
 
-    os.makedirs(os.path.join(output_path, "classes"), exist_ok=True)
+    print("\nProcessing DataTypes\n")
+
+    index_data = {
+        'details': {
+            'model_prefix': prefix,
+            'type': 'DataTypes',
+        },
+        'owned_elements': []
+    }
 
     # Find all DataTypes
     for packaged_element in root.findall('.//packagedElement[@xmi:type="uml:DataType"]', ns):
@@ -441,6 +470,22 @@ def generate_datatype_pages(model_file, prefix, output_path):
         datatype_name = packaged_element.get('name')
 
         ###############################################################################
+        ##  Check the package hierarchy and skip if DATEX II related.                ##
+        ###############################################################################
+
+        package_hierarchy = get_package_hierachy(packaged_element)
+        if check_for_skip(package_hierarchy): continue
+
+        ###############################################################################
+        ##  Save the datatype name to the index page list.                           ##
+        ###############################################################################
+
+        index_data['owned_elements'].append({
+            'name': datatype_name,
+            'type': xmi_type
+        })
+
+        ###############################################################################
         ##  Find the element and extract properties.                                 ##
         ###############################################################################
 
@@ -448,7 +493,8 @@ def generate_datatype_pages(model_file, prefix, output_path):
         properties = element.find('properties')
         links = element.find('links')
 
-        datatype_desc = properties.get('documentation')
+        # datatype_desc = properties.get('documentation')
+        datatype_desc = element.find('./tags/tag[@name="definition"]').get('value')
 
         ###############################################################################
         ##  Add the main details of the datatype.                                    ##
@@ -489,8 +535,6 @@ def generate_datatype_pages(model_file, prefix, output_path):
         ##  Add the datatype relationships.                                          ##
         ###############################################################################
 
-        print(links)
-
         if links is not None:
             data['relationships'] = []
 
@@ -501,10 +545,19 @@ def generate_datatype_pages(model_file, prefix, output_path):
                 }
                 data['relationships'].append(relationship)
 
-        pprint(data)
+        # pprint(data)
 
+        os.makedirs(output_path, exist_ok=True)
         output_file = os.path.join(output_path, datatype_name + ".md")
         render_template("datatype.md.j2", data, output_file)
+
+    ###################################################################################
+    ##  Generate a generic index page.                                               ##
+    ###################################################################################
+
+    generate_index_page(output_path, index_data)
+
+    return
 
     # Find all PrimitiveType elements
     for packaged_element in root.findall('.//packagedElement[@xmi:type="uml:PrimitiveType"]', ns):
@@ -540,10 +593,21 @@ def generate_datatype_pages(model_file, prefix, output_path):
 
         data['properties'].append({ 'name': datatype_id })
 
-        pprint(data)
+        # pprint(data)
 
         output_file = os.path.join(output_path, datatype_name + ".md")
         render_template("datatype.md.j2", data, output_file)
+
+
+def generate_index_page(output_path, index_data):
+    """
+    Generate a generic index page.
+    """
+
+    pprint(index_data)
+
+    output_file = os.path.join(output_path, "index.md")
+    render_template("generic_index.md.j2", index_data, output_file)
 
 
 def generate_diagram_pages(model_file, prefix, output_path):
@@ -553,8 +617,6 @@ def generate_diagram_pages(model_file, prefix, output_path):
 
     tree = ET.parse(model_file)
     root = tree.getroot()
-
-    ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.0' }
 
     id_to_name_map = generate_id_to_name_map(root, ns)
 
@@ -587,9 +649,9 @@ def generate_package_page(package, model_file, prefix, output_path):
     tree = ET.parse(model_file)
     root = tree.getroot()
 
-    ns = { 'xmi': 'http://schema.omg.org/spec/XMI/2.1', 'uml': 'http://schema.omg.org/spec/UML/2.0' }
-
     id_to_name_map = generate_id_to_name_map(root, ns)
+
+    print("\nGenerating a package page for {}\n".format(package))
 
     os.makedirs(os.path.join(output_path, package.lower()), exist_ok=True)
 
@@ -610,8 +672,10 @@ def generate_package_page(package, model_file, prefix, output_path):
         package_name = packaged_element.get('name')
 
         print("Found package", package_name)
+        print("{:30} {}".format(package_name, package))
 
         if package_name == package:
+            print("if package_name=package is true")
 
             ###############################################################################
             ##  Find the element and extract properties.                                 ##
@@ -665,25 +729,24 @@ def generate_package_page(package, model_file, prefix, output_path):
                     })
                     #data['owned_elements'].append(id_to_name_map.get(owned.get('name'), None))
 
-            pprint(data)
+            #pprint(data)
 
             output_file = os.path.join(output_path, package_name.lower(), "index.md")
             render_template("package.md.j2", data, output_file)
 
 
 def main():
-#   model_file = "TransportSafetyModel.xmi"
-    model_file = os.path.join("model", "model_uml2.2_xmi_2.1_EA.xmi")
+    model_file = os.path.join("model", "TransportSafetyModel.xmi")
     output_dir = "output"
     prefix = "TSM"
 
     generate_enumeration_pages(model_file, prefix, os.path.join(output_dir, "enumerations"))
     generate_class_pages(model_file, prefix, os.path.join(output_dir, "classes"))
     generate_datatype_pages(model_file, prefix, os.path.join(output_dir, "datatypes"))
-    generate_diagram_pages(model_file, prefix, output_dir)
-    generate_package_page("Enumerations", model_file, prefix, output_dir)
-    generate_package_page("DataTypes", model_file, prefix, output_dir)
-    generate_package_page("Classes", model_file, prefix, output_dir)
+    #generate_diagram_pages(model_file, prefix, output_dir)
+    #generate_package_page("Enumerations", model_file, prefix, output_dir)
+    #generate_package_page("DataTypes", model_file, prefix, output_dir)
+    #generate_package_page("Classes", model_file, prefix, output_dir)
 
 if __name__ == "__main__":
     main()
