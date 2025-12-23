@@ -20,11 +20,13 @@ Name | Value
 
 {% for item in owned_elements %}
 {% if item.type == 'uml:Enumeration' %}
-[{{ item.name }}](../enumerations/{{ item.name }}.md)
+[{{ item.name }}]({{ item.name }}.md)
 {% elif item.type == 'uml:DataType' %}
 [{{ item.name }}](../datatypes/{{ item.name }}.md)
 {% elif item.type == 'uml:Class' %}
 [{{ item.name }}](../classes/{{ item.name }}/index.md)
+{% elif item.type == 'uml:Package' %}
+[{{ item.name }}]({{ item.name }}/index.md)
 {% else %}
 {{ item.name }}
 {% endif %}
