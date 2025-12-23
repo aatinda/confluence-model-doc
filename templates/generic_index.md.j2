@@ -1,0 +1,24 @@
+---
+title: {{ details.model_prefix }} {{ details.type | replace("uml:", "") }}
+tags:
+  - transport_safety_model
+---
+
+# {{ details.type }}
+
+{% for item in owned_elements %}
+{% if item.type == 'uml:Enumeration' %}
+[{{ item.name }}]({{ item.name }}.md)
+{% elif item.type == 'uml:DataType' %}
+[{{ item.name }}](../datatypes/{{ item.name }}.md)
+{% elif item.type == 'uml:Class' %}
+[{{ item.name }}](../classes/{{ item.name }}/index.md)
+{% elif item.type == 'uml:Package' %}
+[{{ item.name }}]({{ item.name }}/index.md)
+{% else %}
+{{ item.name }}
+{% endif %}
+
+{% endfor %}
+
+<!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->
