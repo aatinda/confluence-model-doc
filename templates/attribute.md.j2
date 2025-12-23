@@ -1,12 +1,12 @@
 ---
-title: {{ details.name }}
+title: {{ details.model_prefix }} {{ details.name }} {{ details.type | replace("uml:", "") }}
 tags: ["transport_safety_model"]
 ---
 
 # Description
 
 {{ details.description }}
-
+ 
 # Properties
 
 Name | Value
@@ -20,9 +20,5 @@ Name | Value
 {{ item.name }} | {{ item.value }}
 {% endif %}
 {% endfor %}
-
-# Diagrams
-
-_Coming soon_
 
 <!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->

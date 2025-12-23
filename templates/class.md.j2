@@ -1,6 +1,7 @@
 ---
-title: {{ details.name }}
-tags: ["transport_safety_model"]
+title: {{ details.model_prefix }} {{ details.name }} {{ details.type | replace("uml:", "") }}
+tags:
+  - transport_safety_model
 ---
 
 # Description
@@ -23,16 +24,16 @@ Name | Value
 {{ item.name }} | {{ item.value }}
 {% endfor %}
 
+{% if relationships %}
 # Relationships
 
-_Coming soon_
+{% for item in relationships -%}
+[{{ item.start }}](../{{ item.start }}/index.md) ─ [{{ item.end }}](../{{ item.end }}/index.md)
 
+{% endfor %}
+{% endif %}
 # Owned Elements
 
-_Coming soon_
-
-# Diagrams
-
-_Coming soon_
+To be added
 
 <!-- generated-by: Generated from XML Metadata Interchange file exported from Transport Safety Model. -->
